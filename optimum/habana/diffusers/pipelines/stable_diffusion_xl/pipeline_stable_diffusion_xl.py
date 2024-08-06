@@ -525,7 +525,8 @@ class GaudiStableDiffusionXLPipeline(GaudiDiffusionPipeline, StableDiffusionXLPi
             self._cross_attention_kwargs = cross_attention_kwargs
             self._denoising_end = denoising_end
             self._interrupt = False
-
+            # import pdb; pdb.set_trace()
+            # breakpoint()
             # 2. Define call parameters
             if prompt is not None and isinstance(prompt, str):
                 num_prompts = 1
@@ -584,7 +585,8 @@ class GaudiStableDiffusionXLPipeline(GaudiDiffusionPipeline, StableDiffusionXLPi
                 generator,
                 latents,
             )
-
+            print(f"prompt= {prompt}")
+            print(f"prompt_embeds= {prompt_embeds}")
             # 6. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
             extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
@@ -733,6 +735,8 @@ class GaudiStableDiffusionXLPipeline(GaudiDiffusionPipeline, StableDiffusionXLPi
                     added_cond_kwargs = {"text_embeds": add_text_embeddings_batch, "time_ids": add_time_ids_batch}
                     if ip_adapter_image is not None:
                         added_cond_kwargs["image_embeds"] = image_embeds
+                    # import pdb; pdb.set_trace()
+                    # breakpoint()
                     noise_pred = self.unet_hpu(
                         latent_model_input,
                         timestep,
@@ -884,6 +888,7 @@ class GaudiStableDiffusionXLPipeline(GaudiDiffusionPipeline, StableDiffusionXLPi
                 added_cond_kwargs,
             )
         else:
+            print(f"########################")
             return self.unet(
                 latent_model_input,
                 timestep,

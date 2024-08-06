@@ -27,8 +27,9 @@ from optimum.habana.diffusers import (
     GaudiEulerAncestralDiscreteScheduler,
     GaudiEulerDiscreteScheduler,
 )
+from diffusers import UniPCMultistepScheduler
 from optimum.habana.utils import set_seed
-
+from compel import Compel, ReturnedEmbeddingsType
 
 try:
     from optimum.habana.utils import check_optimum_habana_min_version
@@ -271,6 +272,12 @@ def main():
         action="store_true",
         help="Enable deterministic generation using CPU Generator",
     )
+    parser.add_argument(
+        "--use_compel",
+        action="store_true",
+        help="Enable deterministic generation using CPU Generator",
+    )
+
     args = parser.parse_args()
 
     # Select stable diffuson pipeline based on input
@@ -403,6 +410,7 @@ def main():
             pipeline = AutoPipelineForInpainting.from_pretrained(args.model_name_or_path, **kwargs)
 
         else:
+           
             # Import SDXL pipeline
             from optimum.habana.diffusers import GaudiStableDiffusionXLPipeline
 
@@ -505,7 +513,31 @@ def main():
         with distributed_state.split_between_processes(args.prompts) as prompt:
             outputs = pipeline(prompt=prompt, **kwargs_call)
     else:
-        outputs = pipeline(prompt=args.prompts, **kwargs_call)
+        if args.use_compel:
+            if sdxl:
+                compel = Compel(
+                    tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2] ,
+                    text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
+                    returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                    requires_pooled=[False, True]
+                )
+                conditioning, pooled = compel(args.prompts)
+                print(f"conditioning={conditioning}")
+                print(f"pooled={pooled}")
+                # import pdb;pdb.set_trace()
+                # breakpoint()
+                outputs = pipeline(prompt_embeds=conditioning, pooled_prompt_embeds=pooled, **kwargs_call)
+            else:
+                import pdb;pdb.set_trace()
+                breakpoint()
+                print(f"tokenizer = {pipeline.tokenizer}")
+                print(f"text_encoder = {pipeline.text_encoder}")
+                compel_proc = Compel(tokenizer=pipeline.tokenizer, text_encoder=pipeline.text_encoder)
+                prompt_embeds = compel_proc(args.prompts)
+                #print(f"prompt_embeds={prompt_embeds}")
+                #outputs = pipeline(prompt_embeds=prompt_embeds, **kwargs_call)
+        else:   
+            outputs = pipeline(prompt=args.prompts, **kwargs_call)
 
     # Save the pipeline in the specified directory if not None
     if args.pipeline_save_dir is not None:
